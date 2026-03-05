@@ -6,8 +6,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-test-key'
 import dj_database_url
 
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = ['.vercel.app', 'localhost', '127.0.0.1']
+DEBUG = True
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -77,8 +77,10 @@ CACHES = {
 
 # Production settings
 import sys
-# Make sure passkey_core is in the path
-sys.path.append(os.path.abspath(os.path.join(BASE_DIR, "../../passkey-auth-core")))
+# Make it more robust for Vercel build environment
+pkg_path = os.path.abspath(os.path.join(BASE_DIR, "../../passkey-auth-core"))
+if pkg_path not in sys.path:
+    sys.path.append(pkg_path)
 
 
 WSGI_APPLICATION = 'core.wsgi.application'
