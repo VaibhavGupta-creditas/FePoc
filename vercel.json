@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "PassKey/examples/django_test_app/api/$1"
+      "destination": "PassKey/examples/django_test_app/core/wsgi.py"
     },
     {
       "source": "/(.*)",
