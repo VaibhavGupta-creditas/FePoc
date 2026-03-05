@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.http import JsonResponse
 from passkey_core.services import PasskeyService
 from django.views.decorators.csrf import csrf_exempt
@@ -150,7 +150,7 @@ def verify_passkey(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/passkey/', include('passkey_core.urls')),
-    path('api/check-account/', check_account),
-    path('api/verify-otp/', verify_otp),
-    path('api/verify-passkey/', verify_passkey),
+    re_path(r'^api/check-account/?$', check_account),
+    re_path(r'^api/verify-otp/?$', verify_otp),
+    re_path(r'^api/verify-passkey/?$', verify_passkey),
 ]
