@@ -1,7 +1,11 @@
 import os
 from pathlib import Path
 
+import sys
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Vercel path fix: Add the project root to sys.path
+sys.path.append(str(BASE_DIR))
 
 SECRET_KEY = 'django-insecure-test-key'
 import dj_database_url
@@ -90,8 +94,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # === Passkey Authentication Settings ===
 
 # 1. Platform Identity (WebAuthn Basics)
-PASSKEY_RP_ID = "localhost"
-PASSKEY_ORIGIN = "http://localhost:3000"
+PASSKEY_RP_ID = os.environ.get('VERCEL_URL', 'localhost')
+PASSKEY_ORIGIN = "https://" + os.environ.get('VERCEL_URL', 'localhost') if os.environ.get('VERCEL_URL') else "http://localhost:3000"
 PASSKEY_RP_NAME = "Passkey Demo App"
 
 # 2. Source Data (What fields to read from your User model)
