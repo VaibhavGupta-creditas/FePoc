@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "passkey-auth-core"
+version = "1.0.0"
+authors = [
+  { name="Vaibhav Gupta", email="vaibhav.gupta@creditas.in" },
+]
+description = "A sharable Passkey authentication core for Django projects"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "django>=4.0",
+    "djangorestframework>=3.14.0",
+    "webauthn>=2.0.0",
+    "pyjwt>=2.8.0",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Framework :: Django",
+    "License :: OSI Approved :: MIT License",
+]

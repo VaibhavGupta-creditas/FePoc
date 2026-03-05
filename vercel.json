@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "PassKey/examples/django_test_app/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "PassKey/examples/nextjs_test_app/$1"
+    }
+  ],
+  "builds": [
+    {
+      "src": "PassKey/examples/django_test_app/core/wsgi.py",
+      "use": "@vercel/python",
+      "config": { "maxDuration": 10 }
+    },
+    {
+      "src": "PassKey/examples/nextjs_test_app/package.json",
+      "use": "@vercel/next"
+    }
+  ]
+}
