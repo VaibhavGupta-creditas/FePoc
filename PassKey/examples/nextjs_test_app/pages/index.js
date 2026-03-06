@@ -1,6 +1,43 @@
 import { useState, useEffect } from 'react';
 
-// Premium Glassmorphism UI for Passkey Flow
+// --- Premium Icon Components ---
+const IconShield = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#049f6c' }}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+
+const IconMail = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#049f6c' }}>
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+    <polyline points="22,6 12,13 2,6" />
+  </svg>
+);
+
+const IconFingerprint = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#1a1a1a' }}>
+    <path d="M2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12" />
+    <path d="M5 15C5 11.134 8.13401 8 12 8C15.866 8 19 11.134 19 15" />
+    <path d="M8 18C8 15.7909 9.79086 14 12 14C14.2091 14 16 15.7909 16 18" />
+    <path d="M12 20V22" />
+    <path d="M12 11V11.01" />
+    <path d="M12 5V5.01" />
+  </svg>
+);
+
+const IconSparkles = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffa500' }}>
+    <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-11.314l.707.707m11.314 11.314l.707.707M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
+  </svg>
+);
+
+const IconCheckCircle = () => (
+  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#049f6c' }}>
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
+  </svg>
+);
+
 export default function Home() {
   const [step, setStep] = useState('login'); // login | otp | prompt | passkey | dashboard
   const [sdkLoaded, setSdkLoaded] = useState(false);
@@ -8,18 +45,13 @@ export default function Home() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [accountInfo, setAccountInfo] = useState(null);
-  const [logs, setLogs] = useState([]);
-
-  const addLog = (msg) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 5));
-  };
+  const [loading, setLoading] = useState(false);
 
   const API_BASE = (typeof window !== 'undefined' && window.location.port === '3000') 
                   ? "http://localhost:8000/api" 
                   : "/api";
 
-  // Manually ensure scripts are loaded
+  // Load SDK
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -40,21 +72,32 @@ export default function Home() {
     Promise.all([
       loadScript("https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"),
     ]).then(() => {
-      console.log("WebAuthn runtime loaded");
       setSdkLoaded(true);
     });
   }, []);
 
-  // Simplified: No SDK class needed. Just use the browser runtime.
-  const getSWA = () => {
-    return window.SimpleWebAuthnBrowser || window.SimpleWebAuthnBrowser_dist_bundle_index_umd_min;
+  const getSWA = () => window.SimpleWebAuthnBrowser || window.SimpleWebAuthnBrowser_dist_bundle_index_umd_min;
+
+  // Validation
+  const validateLogin = () => {
+    if (!/^\d{10}$/.test(formData.mobile)) {
+      setError('Please enter a valid 10-digit mobile number.');
+      return false;
+    }
+    if (!/^\d{4}$/.test(formData.card)) {
+      setError('Please enter the last 4 digits of your card.');
+      return false;
+    }
+    return true;
   };
 
   // Step 1: Check Account
   async function handleCheckAccount(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (!validateLogin()) return;
+
     setError('');
-    addLog(`>>> Checking account: ${formData.mobile}`);
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/check-account/`, {
         method: 'POST',
@@ -62,33 +105,37 @@ export default function Home() {
         body: JSON.stringify({ mobile: formData.mobile, card: formData.card })
       });
       const data = await res.json();
-      addLog(`<<< Received: ${JSON.stringify(data).substring(0, 50)}...`);
 
       if (!res.ok) {
-        setError(data.message || 'Validation failed');
-        setStatus('');
+        setError(data.message || 'Validation failed. Please try again.');
+        setLoading(false);
         return;
       }
 
-      setAccountInfo(data); // Stores passkey_options and challenge_id if they exist
+      setAccountInfo(data);
       if (data.has_passkey) {
         setStep('passkey');
-        setStatus('Passkey found! Ready for biometric login.');
+        setStatus('Biometrics found! Authenticating...');
       } else {
         setStep('otp');
-        setStatus('Account found. Please verify with OTP (Use 123456).');
+        setStatus('User verified. OTP required.');
       }
     } catch (err) {
       setError('Connection error: ' + err.message);
-      setStatus('');
+    } finally {
+      setLoading(false);
     }
   }
 
   // Step 2: Verify OTP
   async function handleVerifyOTP(e) {
     e.preventDefault();
+    if (formData.otp.length !== 6) {
+      setError('Enter the 6-digit code.');
+      return;
+    }
     setError('');
-    setStatus('Verifying OTP...');
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/verify-otp/`, {
         method: 'POST',
@@ -98,43 +145,34 @@ export default function Home() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || 'OTP Verification failed');
-        setStatus('');
+        setError(data.message || 'Incorrect verification code.');
+        setLoading(false);
         return;
       }
 
-      console.log("OTP Verification Response:", data);
-
       if (data.status === 'success') {
-        setAccountInfo(prev => ({ ...prev, ...data })); // Merge registration options
+        setAccountInfo(prev => ({ ...prev, ...data }));
         if (data.show_passkey_prompt) {
           setStep('prompt');
-          setStatus('OTP Verified! One more step.');
+          setStatus('');
         } else {
           setStep('dashboard');
-          setStatus('Logged in successfully');
         }
       }
     } catch (err) {
-      setError('Error: ' + err.message);
-      setStatus('');
+      setError('Error verifying OTP: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   }
 
   // Step 2 (Alternative): Passkey Login
   async function handlePasskeyLogin() {
-    addLog(`>>> Starting biometric login for ${accountInfo.username}`);
-    setStatus('Authenticating...');
+    setLoading(true);
     setError('');
     try {
-      if (typeof window !== 'undefined' && !window.PublicKeyCredential) {
-        throw new Error("This browser does not support Passkeys.");
-      }
-
       const swa = getSWA();
-      if (!swa) throw new Error("Biometric module still loading...");
-      
-      addLog(`Waiting for browser biometric prompt...`);
+      if (!swa) throw new Error("Security module initializing...");
       
       const assertion = await swa.startAuthentication({ optionsJSON: accountInfo.passkey_options });
       
@@ -148,78 +186,374 @@ export default function Home() {
       });
       
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed.");
+      if (!res.ok) throw new Error(data.message || "Authentication failed.");
       
-      addLog(`<<< Login Success!`);
       setStep('dashboard');
-      setStatus('Welcome back!');
     } catch (err) {
-      const errorMsg = err.message || 'Biometric login failed.';
-      setError(errorMsg);
-      setStatus('');
-      addLog(`!!! Error: ${errorMsg}`);
+      setError(err.message || 'Biometric login failed.');
+    } finally {
+      setLoading(false);
     }
   }
 
-  // UI Styles
-  const inputStyle = { width: '100%', padding: '12px', margin: '10px 0', borderRadius: '8px', border: '1px solid #ddd', fontSize: '16px', background: 'rgba(255, 255, 255, 0.8)' };
-  const buttonStyle = { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold', marginTop: '10px' };
-  const containerStyle = { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5', fontFamily: '"Segoe UI", Roboto, Helvetica, Arial, sans-serif' };
-  const cardStyle = { background: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', width: '100%', maxWidth: '400px', textAlign: 'center' };
+  // Styles
+  const glassStyles = `
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .container {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+      background: linear-gradient(-45deg, #0f172a, #111827, #020617, #0f172a);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+    }
+
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .background-mesh {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      opacity: 0.6;
+      filter: blur(100px);
+      z-index: 0;
+    }
+
+    .blob {
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      mix-blend-mode: screen;
+      animation: moveBlobs 25s infinite alternate;
+    }
+
+    .blob-1 { background: #0ea5e9; top: -10%; left: -10%; animation-duration: 18s; }
+    .blob-2 { background: #d946ef; bottom: -10%; right: -10%; animation-duration: 22s; animation-delay: -2s; }
+    .blob-3 { background: #10b981; top: 40%; right: 10%; animation-duration: 15s; animation-delay: -5s; }
+
+    @keyframes moveBlobs {
+      from { transform: translate(0,0) rotate(0deg) scale(1); }
+      to { transform: translate(100px, 100px) rotate(360deg) scale(1.2); }
+    }
+
+    .card {
+      background: rgba(17, 24, 39, 0.7);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 56px;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+      position: relative;
+      z-index: 10;
+      color: #fff;
+      animation: cardEntrance 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    @keyframes cardEntrance {
+      from { opacity: 0; transform: scale(0.9) translateY(40px); filter: blur(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+    }
+
+    .shaker { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+
+    .logo-badge {
+      width: 68px;
+      height: 68px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 28px;
+      border: 1.5px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+    }
+
+    .brand-name {
+      font-weight: 600;
+      font-size: 30px;
+      color: #fff;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    .brand-sub {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 44px;
+      font-weight: 400;
+    }
+
+    .input-group {
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .label {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 12px;
+      display: block;
+      margin-left: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .input {
+      width: 100%;
+      padding: 16px 20px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      font-size: 17px;
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      outline: none;
+      box-sizing: border-box;
+      color: #fff;
+    }
+
+    .input:focus {
+      border-color: #10b981;
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+      transform: scale(1.02);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 20px;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 20px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 30px rgba(255, 255, 255, 0.2);
+      background: #f1f1f1;
+    }
+
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .error-toast {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+      padding: 14px 20px;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 28px;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: toastEntrance 0.5s ease;
+    }
+
+    @keyframes toastEntrance {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .status-text {
+      color: #10b981;
+      font-size: 14px;
+      margin-top: 20px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-link {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 15px;
+      font-weight: 500;
+      margin-top: 32px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-link:hover { color: #fff; }
+
+    .spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(0,0,0,0.1);
+      border-radius: 50%;
+      border-top-color: #000;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .icon-wrapper {
+      margin-bottom: 32px;
+      filter: drop-shadow(0 0 15px rgba(255,255,255,0.2));
+      animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  `;
 
   return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
-        <h2 style={{ color: '#333', marginBottom: '10px' }}>Login</h2>
-        {/* <p style={{ color: '#666', fontSize: '14px' }}>Powered by Passkey Auth Core</p> */}
+    <div className="container">
+      <style>{glassStyles}</style>
+      
+      {/* Premium Animated Background */}
+      <div className="background-mesh">
+        <div className="blob blob-1" />
+        <div className="blob blob-2" />
+        <div className="blob blob-3" />
+      </div>
 
+      <div className={`card ${error ? 'shaker' : ''}`}>
+        
         {step === 'login' && (
-          <form onSubmit={handleCheckAccount}>
-            <input style={inputStyle} placeholder="Mobile Number" required onChange={e => setFormData({...formData, mobile: e.target.value})} />
-            <input style={inputStyle} placeholder="Card Number (Last 4 digits)" required maxLength="4" onChange={e => setFormData({...formData, card: e.target.value})} />
-            <button type="submit" style={buttonStyle}>Continue</button>
-          </form>
+          <>
+            <div className="logo-badge"><IconShield /></div>
+            <div className="brand-name">FinSecure</div>
+            <div className="brand-sub">Modern biometrics for your account</div>
+            
+            {error && (
+              <div className="error-toast">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {error}
+              </div>
+            )}
+            
+            <form onSubmit={handleCheckAccount}>
+              <div className="input-group">
+                <span className="label">Mobile Number</span>
+                <input 
+                  className="input" 
+                  placeholder="Enter Mobile Number" 
+                  type="tel"
+                  maxLength="10"
+                  value={formData.mobile}
+                  onChange={e => setFormData({ ...formData, mobile: e.target.value.replace(/\D/g, '') })}
+                />
+              </div>
+              <div className="input-group">
+                <span className="label">Last 4 digits of card</span>
+                <input 
+                  className="input" 
+                  placeholder="••••" 
+                  type="password"
+                  maxLength="4"
+                  value={formData.card}
+                  onChange={e => setFormData({ ...formData, card: e.target.value.replace(/\D/g, '') })}
+                />
+              </div>
+              <button className="btn-primary" disabled={loading} type="submit">
+                {loading ? <div className="spinner"></div> : 'Confirm Identity'}
+              </button>
+            </form>
+          </>
         )}
 
         {step === 'otp' && (
-          <form onSubmit={handleVerifyOTP}>
-            <p style={{ color: '#444' }}>Verification code sent to {formData.mobile}</p>
-            <input style={inputStyle} placeholder="Enter 123456" required onChange={e => setFormData({...formData, otp: e.target.value})} />
-            <button type="submit" style={buttonStyle}>Verify & Login</button>
-            <button type="button" onClick={() => setStep('login')} style={{...buttonStyle, background: 'none', color: '#666', fontSize: '14px'}}>Back</button>
-          </form>
+          <>
+            <div className="icon-wrapper"><IconMail /></div>
+            <div className="brand-name">Verify it's you</div>
+            <p style={{ fontSize: '15px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '32px', lineHeight: '1.5' }}>
+              We've sent a one-time code to <br/><span style={{ color: '#fff', fontWeight: 500 }}>+91 ••••• ••{formData.mobile.slice(-2)}</span>
+            </p>
+            {error && <div className="error-toast">{error}</div>}
+            <form onSubmit={handleVerifyOTP}>
+              <input 
+                className="input" 
+                style={{ textAlign: 'center', letterSpacing: '10px', fontSize: '26px', fontWeight: 'bold', marginBottom: '24px' }}
+                placeholder="000000"
+                maxLength="6"
+                onChange={e => setFormData({...formData, otp: e.target.value.replace(/\D/g, '')})} 
+              />
+              <button className="btn-primary" disabled={loading} type="submit">
+                {loading ? <div className="spinner"></div> : 'Verify Code'}
+              </button>
+              <button className="btn-link" type="button" onClick={() => setStep('login')}>Use a different method</button>
+            </form>
+          </>
         )}
 
         {step === 'passkey' && (
-          <div>
-            <p style={{ color: '#444' }}>Hello, {accountInfo?.username}!</p>
-            <p style={{ fontSize: '14px', marginBottom: '20px' }}>Your account is secured with a Passkey.</p>
-            <button onClick={handlePasskeyLogin} style={buttonStyle}>Login with Fingerprint/FaceID</button>
-            <p style={{ fontSize: '11px', color: '#999', marginTop: '10px' }}>
-              Note: If using your phone to login, please ensure <b>Bluetooth</b> is enabled on both devices.
+          <>
+            <div className="icon-wrapper"><IconFingerprint /></div>
+            <div className="brand-name">Sign in instantly</div>
+            <p style={{ fontSize: '15px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '40px', lineHeight: '1.6' }}>
+              Welcome back, <b>{accountInfo?.username}</b>.<br/>
+              Access your account with your biometrics.
             </p>
-            <button onClick={() => setStep('otp')} style={{...buttonStyle, background: '#eee', color: '#333'}}>Use OTP Instead</button>
-          </div>
+            {error && <div className="error-toast">{error}</div>}
+            <button onClick={handlePasskeyLogin} className="btn-primary" disabled={loading}>
+              {loading ? <div className="spinner"></div> : 'Use Touch ID / Face ID'}
+            </button>
+            <button className="btn-link" onClick={() => setStep('otp')}>Sign in with SMS code</button>
+          </>
         )}
 
         {step === 'prompt' && (
-          <div>
-            <div style={{ fontSize: '40px', marginBottom: '10px' }}>🛡️</div>
-            <h3 style={{ color: '#333' }}>Secure your account?</h3>
-            <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>Enable Fingerprint/FaceID for faster logins next time.</p>
-            <button 
+          <>
+            <div className="icon-wrapper"><IconSparkles /></div>
+            <div className="brand-name">Unlock Passkeys</div>
+            <p style={{ fontSize: '15px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '32px', lineHeight: '1.6' }}>
+              Experience faster, safer sign-ins.<br/>
+              Enable biometrics for this device.
+            </p>
+            {error && <div className="error-toast">{error}</div>}
+            <button className="btn-primary" 
               onClick={async () => {
+                setLoading(true);
+                setError('');
                 try {
-                  setStatus('Enabling Passkey...');
-                  setError('');
-                  
                   const swa = getSWA();
-                  if (!swa) throw new Error("Biometric module still loading...");
-
-                  // 1. Trigger Native Prompt
+                  if (!swa) throw new Error("Initializing...");
                   const credential = await swa.startRegistration({ optionsJSON: accountInfo.passkey_options });
-
-                  // 2. Verify with Fused API
                   const res = await fetch(`${API_BASE}/verify-passkey/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -229,62 +563,29 @@ export default function Home() {
                       reg_token: accountInfo.reg_token
                     })
                   });
-
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.message || "Registration failed.");
-
+                  if (!res.ok) throw new Error("Registration failed.");
                   setStep('dashboard');
-                  setStatus('Passkey enabled successfully!');
-                } catch (err) { 
-                  setError(err.message || 'Enabling failed.');
-                  setStatus('');
-                }
-              }} 
-              style={buttonStyle}
+                } catch (err) { setError(err.message); } finally { setLoading(false); }
+              }}
             >
-              Yes, Enable Now
+              {loading ? <div className="spinner"></div> : 'Set Up Biometrics'}
             </button>
-            <button onClick={() => setStep('dashboard')} style={{...buttonStyle, background: '#eee', color: '#333'}}>Maybe Later</button>
-          </div>
+            <button className="btn-link" onClick={() => setStep('dashboard')}>Not right now</button>
+          </>
         )}
 
         {step === 'dashboard' && (
-          <div>
-            <div style={{ fontSize: '50px', marginBottom: '20px' }}>🎉</div>
-            <h3 style={{ color: '#2ecc71' }}>Success!</h3>
-            <p>Welcome to your secure dashboard.</p>
-            <button onClick={() => window.location.reload()} style={buttonStyle}>Sign Out</button>
+          <div style={{ animation: 'cardEntrance 1s ease' }}>
+            <div className="icon-wrapper" style={{ margin: '20px 0 32px' }}><IconCheckCircle /></div>
+            <div className="brand-name" style={{ color: '#10b981' }}>Successfully Signed In</div>
+            <p style={{ color: 'rgba(255, 255, 255, 0.5)', marginBottom: '40px', fontSize: '16px' }}>Your session is now secure and active.</p>
+            <button className="btn-primary" style={{ background: '#fff' }} onClick={() => window.location.reload()}>Sign Out</button>
           </div>
         )}
 
-        {status && <div style={{ marginTop: '20px', color: '#2980b9', fontSize: '13px' }}>{status}</div>}
-        {error && <div style={{ marginTop: '20px', color: '#e74c3c', fontSize: '13px' }}>{error}</div>}
-        {!sdkLoaded && <div style={{ marginTop: '10px', color: '#aaa', fontSize: '10px' }}>Initializing security modules...</div>}
+        {status && step !== 'dashboard' && <div className="status-text">{status}</div>}
+        {!sdkLoaded && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', marginTop: '24px' }}>Loading secure environment...</div>}
       </div>
-
-      {/* Debugger Panel */}
-      {/* <div style={{
-        marginTop: '30px',
-        width: '100%',
-        maxWidth: '430px',
-        background: '#1e1e1e',
-        color: '#00ff00',
-        padding: '15px',
-        borderRadius: '10px',
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        textAlign: 'left',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-        overflow: 'hidden'
-      }}>
-        <div style={{ borderBottom: '1px solid #333', marginBottom: '10px', paddingBottom: '5px', fontWeight: 'bold' }}>
-          Real-time Flow Debugger
-        </div>
-        {logs.map((log, i) => (
-          <div key={i} style={{ marginBottom: '4px' }}>{log}</div>
-        ))}
-        {logs.length === 0 && <div style={{ color: '#666' }}>Waiting for activity...</div>}
-      </div> */}
     </div>
   );
 }
