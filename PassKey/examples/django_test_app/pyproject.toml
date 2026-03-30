@@ -1,0 +1,27 @@
+[project]
+name = "django-test-app"
+version = "0.1.0"
+description = "Example Django app using Passkey Auth Core"
+authors = [
+    { name="Vaibhav Gupta", email="vaibhav.gupta@creditas.in" },
+]
+dependencies = [
+    "django>=4.0",
+    "djangorestframework>=3.14.0",
+    "webauthn>=2.0.0",
+    "pyjwt>=2.8.0",
+    "psycopg2-binary>=2.9.0",
+    "django-cors-headers>=4.0.0",
+    "cryptography>=41.0.0",
+    "dj-database-url>=2.1.0",
+    "django-redis>=5.4.0",
+    "passkey-auth-core",
+]
+requires-python = ">=3.10"
+
+[tool.uv.sources]
+passkey-auth-core = { path = "../../passkey-auth-core", editable = true }
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
