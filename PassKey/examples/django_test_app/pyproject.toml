@@ -6,7 +6,7 @@ authors = [
     { name="Vaibhav Gupta", email="vaibhav.gupta@creditas.in" },
 ]
 dependencies = [
-    "django>=4.0",
+    "django==5.0.9",
     "djangorestframework>=3.14.0",
     "webauthn>=2.0.0",
     "pyjwt>=2.8.0",
