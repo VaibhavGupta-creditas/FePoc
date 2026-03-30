@@ -95,9 +95,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # === Passkey Authentication Settings ===
 
 # 1. Platform Identity (WebAuthn Basics)
-PASSKEY_RP_ID = "fe-poc-three.vercel.app"
-PASSKEY_ORIGIN = "https://fe-poc-three.vercel.app"
-PASSKEY_RP_NAME = "Passkey Demo App"
+PASSKEY_RP_ID = os.environ.get("PASSKEY_RP_ID", "fe-poc-three.vercel.app")
+PASSKEY_ORIGIN = os.environ.get("PASSKEY_ORIGIN", "https://fe-poc-three.vercel.app")
+PASSKEY_RP_NAME = "Passkey Login"
 
 # 2. Source Data (What fields to read from your User model)
 PASSKEY_USER_ID_FIELD = "auth_id"           # The unique ID from the model

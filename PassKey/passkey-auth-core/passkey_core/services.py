@@ -116,9 +116,10 @@ class PasskeyService:
             user_id=cls.get_raw_user_id(user).encode(),
             user_name=cls.get_username(user),
             authenticator_selection=AuthenticatorSelectionCriteria(
-                authenticator_attachment=AuthenticatorAttachment.PLATFORM, # Restrict to device sensors (Face/Fingerprint)
-                user_verification=UserVerificationRequirement.REQUIRED,   # Force biometric/PIN verification
-                resident_key=ResidentKeyRequirement.REQUIRED,             # Required for better discovery
+                # Strictly restrict to built-in device sensors (TouchID, FaceID, Windows Hello)
+                authenticator_attachment=AuthenticatorAttachment.PLATFORM,
+                user_verification=UserVerificationRequirement.REQUIRED,
+                resident_key=ResidentKeyRequirement.REQUIRED,
                 require_resident_key=True
             ),
             timeout=120000 # 2 minutes
@@ -246,7 +247,7 @@ class PasskeyService:
         Smart helper to inject passkey ceremony data into a response dictionary.
         
         Args:
-            user: The user object (custom or default)
+            user: The user object
             data_dict: The dictionary to be returned as JsonResponse
             flow: 'login' or 'register'
         """
@@ -256,6 +257,10 @@ class PasskeyService:
                     options, challenge_id = cls.generate_authentication_options(user)
                     data_dict["passkey_options"] = cls.options_to_dict(options)
                     data_dict["challenge_id"] = challenge_id
+                    data_dict["has_passkey"] = True
+                else:
+                    data_dict["has_passkey"] = False
+                    
             elif flow == 'register':
                 # Only offer registration if they don't have a passkey yet
                 if not cls.check_user_has_passkeys(user):
@@ -264,10 +269,20 @@ class PasskeyService:
                     data_dict["challenge_id"] = challenge_id
                     # Also include a registration token for the final verify step
                     data_dict["reg_token"] = cls.generate_registration_token(user)
+                    data_dict["show_passkey_prompt"] = True
+                else:
+                    data_dict["show_passkey_prompt"] = False
+
         except Exception as e:
             logger.error(f"Failed to inject passkey context: {str(e)}")
-            # Safe fallback: return the original dict without passkey data
-            # This ensures the business API still works even if passkey fails
+            # If injection failed, we MUST prevent the UI from trying to use biometrics
+            data_dict.pop("passkey_options", None)
+            data_dict.pop("challenge_id", None)
+            if flow == 'login':
+                data_dict["has_passkey"] = False
+            elif flow == 'register':
+                data_dict["show_passkey_prompt"] = False
+                
         return data_dict
 
     @staticmethod

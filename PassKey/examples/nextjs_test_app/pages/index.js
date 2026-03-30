@@ -168,12 +168,19 @@ export default function Home() {
 
   // Step 2 (Alternative): Passkey Login
   async function handlePasskeyLogin() {
+    if (!accountInfo?.passkey_options) {
+      setError('Biometric settings not found for this device. Using SMS instead.');
+      setStep('otp');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       const swa = getSWA();
-      if (!swa) throw new Error("Security module initializing...");
+      if (!swa) throw new Error("Security environment not ready.");
       
+      // Pass options directly to the SDK
       const assertion = await swa.startAuthentication({ optionsJSON: accountInfo.passkey_options });
       
       const res = await fetch(`${API_BASE}/verify-passkey/`, {
@@ -457,8 +464,8 @@ export default function Home() {
         {step === 'login' && (
           <>
             <div className="logo-badge"><IconShield /></div>
-            <div className="brand-name">FinSecure</div>
-            <div className="brand-sub">Modern biometrics for your account</div>
+            <div className="brand-name">Passkey</div>
+            <div className="brand-sub">Simple and secure login</div>
             
             {error && (
               <div className="error-toast">

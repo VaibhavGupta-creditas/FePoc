@@ -39,12 +39,11 @@ def check_account(request):
         # Prepare business response
         res_data = {
             "status": "success",
-            "has_passkey": PasskeyService.check_user_has_passkeys(user),
             "username": PasskeyService.get_username(user),
             "user_id": PasskeyService.get_user_id(user)
         }
         
-        # FUSE: Inject passkey options directly into this response
+        # FUSE: Inject passkey options and sync has_passkey flag
         return JsonResponse(PasskeyService.inject_passkey_context(user, res_data, flow='login'))
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
@@ -66,11 +65,10 @@ def verify_otp(request):
             # Prepare business response
             res_data = {
                 "status": "success",
-                "message": "OTP Verified",
-                "show_passkey_prompt": not PasskeyService.check_user_has_passkeys(user)
+                "message": "OTP Verified"
             }
             
-            # FUSE: Inject registration options directly into this response
+            # FUSE: Inject registration options and sync show_passkey_prompt flag
             return JsonResponse(PasskeyService.inject_passkey_context(user, res_data, flow='register'))
         
         return JsonResponse({"status": "error", "message": "Invalid OTP"}, status=400)
